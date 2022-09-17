@@ -48,7 +48,7 @@ import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
-
+z
 from . import opus, utils
 from .backoff import ExponentialBackoff
 from .errors import ClientException, ConnectionClosed
@@ -56,6 +56,8 @@ from .gateway import *
 from .player import AudioPlayer, AudioSource
 from .sinks import RawData, RecordingException, Sink
 from .utils import MISSING
+
+
 
 if TYPE_CHECKING:
     from . import abc
@@ -261,10 +263,12 @@ class VoiceClient(VoiceProtocol):
 
         self.paused = False
         self.recording = False
+        self.is_speaking = True
         self.user_timestamps = {}
         self.sink = None
         self.starting_time = None
         self.stopping_time = None
+        self.count = 0
 
     warn_nacl = not has_nacl
     supported_modes: Tuple[SupportedModes, ...] = (
@@ -551,6 +555,7 @@ class VoiceClient(VoiceProtocol):
 
         encrypt_packet = getattr(self, f"_encrypt_{self.mode}")
         return encrypt_packet(header, data)
+        
 
     def _encrypt_xsalsa20_poly1305(self, header: bytes, data) -> bytes:
         box = nacl.secret.SecretBox(bytes(self.secret_key))
@@ -654,6 +659,8 @@ class VoiceClient(VoiceProtocol):
         self._player = AudioPlayer(source, self, after=after)
         self._player.start()
 
+    import time
+    #import tkinter
     def unpack_audio(self, data):
         """Takes an audio packet received from Discord and decodes it into pcm audio data.
         If there are no users talking in the channel, `None` will be returned.
@@ -675,12 +682,21 @@ class VoiceClient(VoiceProtocol):
             return
         if self.paused:
             return
-
         data = RawData(data, self)
+        '''If found to be not talking, as indicated below the varible is speaking will change.
+        If this value is kept false for 10 "counts" (in 0.05 second intervals)
+        the transriber will automatically stop recording'''
 
         if data.decrypted_data == b"\xf8\xff\xfe":  # Frame of silence
+            self.is_speaking = False
+            if self.is_speaking == False: 
+                self.count = self.count + 1
+                if self.count >=10:
+                    self.stop_recording()
             return
-
+        else:
+            self.is_speaking = True
+            self.count = 0
         self.decoder.decode(data)
 
     def start_recording(self, sink, callback, *args):
@@ -733,7 +749,6 @@ class VoiceClient(VoiceProtocol):
             ),
         )
         t.start()
-
     def stop_recording(self):
         """Stops the recording.
         Must be already recording.
@@ -766,6 +781,9 @@ class VoiceClient(VoiceProtocol):
             raise RecordingException("Not currently recording audio.")
         self.paused = not self.paused
 
+    def check_if_recording(self):
+        return self.recording
+
     def empty_socket(self):
         while True:
             ready, _, _ = select.select([self.socket], [], [], 0.0)
@@ -796,13 +814,16 @@ class VoiceClient(VoiceProtocol):
 
             self.unpack_audio(data)
 
+
         self.stopping_time = time.perf_counter()
         self.sink.cleanup()
         callback = asyncio.run_coroutine_threadsafe(callback(self.sink, *args), self.loop)
         result = callback.result()
+        
+        
 
-        if result is not None:
-            print(result)
+        # if result is not None:
+        #     print(result)
 
     def recv_decoded_audio(self, data):
         if data.ssrc not in self.user_timestamps:
@@ -812,11 +833,14 @@ class VoiceClient(VoiceProtocol):
         else:
             silence = data.timestamp - self.user_timestamps[data.ssrc] - 960
             self.user_timestamps[data.ssrc] = data.timestamp
+            #when user is speaking
 
         data.decoded_data = struct.pack("<h", 0) * silence * opus._OpusStruct.CHANNELS + data.decoded_data
         while data.ssrc not in self.ws.ssrc_map:
             time.sleep(0.05)
+        
         self.sink.write(data.decoded_data, self.ws.ssrc_map[data.ssrc]["user_id"])
+                    
 
     def is_playing(self) -> bool:
         """:class:`bool`: Indicates if we're currently playing audio."""
