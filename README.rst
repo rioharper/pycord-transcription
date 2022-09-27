@@ -17,7 +17,7 @@ Pycord
    :target: https://github.com/Pycord-Development/pycord/releases
    :alt: Latest release
 
-A fork of discord.py. Pycord is a modern, easy to use, feature-rich, and async ready API wrapper for Discord written in Python.
+A fork of discord.py to transcribe audio for the tutorial found on my medium. Pycord is a modern, easy to use, feature-rich, and async ready API wrapper for Discord written in Python.
 
 Key Features
 ------------
