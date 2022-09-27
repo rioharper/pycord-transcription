@@ -48,7 +48,7 @@ import struct
 import threading
 import time
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
-z
+
 from . import opus, utils
 from .backoff import ExponentialBackoff
 from .errors import ClientException, ConnectionClosed
@@ -904,7 +904,95 @@ class VoiceClient(VoiceProtocol):
             Encoding the data failed.
         """
 
-        self.checked_add("sequence", 1, 65535)
+        self.checked_add("sequence", 1, 65535)"""
+2
+The MIT License (MIT)
+3
+​
+4
+Copyright (c) 2015-2021 Rapptz
+5
+Copyright (c) 2021-present Pycord Development
+6
+​
+7
+Permission is hereby granted, free of charge, to any person obtaining a
+8
+copy of this software and associated documentation files (the "Software"),
+9
+to deal in the Software without restriction, including without limitation
+10
+the rights to use, copy, modify, merge, publish, distribute, sublicense,
+11
+and/or sell copies of the Software, and to permit persons to whom the
+12
+Software is furnished to do so, subject to the following conditions:
+13
+​
+14
+The above copyright notice and this permission notice shall be included in
+15
+all copies or substantial portions of the Software.
+16
+​
+17
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+18
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+19
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+20
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+21
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+22
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+23
+DEALINGS IN THE SOFTWARE.
+24
+​
+25
+​
+26
+Some documentation to refer to:
+27
+​
+28
+- Our main web socket (mWS) sends opcode 4 with a guild ID and channel ID.
+29
+- The mWS receives VOICE_STATE_UPDATE and VOICE_SERVER_UPDATE.
+30
+- We pull the session_id from VOICE_STATE_UPDATE.
+31
+- We pull the token, endpoint and server_id from VOICE_SERVER_UPDATE.
+32
+- Then we initiate the voice web socket (vWS) pointing to the endpoint.
+33
+- We send opcode 0 with the user_id, server_id, session_id and token using the vWS.
+34
+- The vWS sends back opcode 2 with an ssrc, port, modes(array) and heartbeat_interval.
+35
+- We send a UDP discovery packet to endpoint:port and receive our IP and our port in LE.
+36
+- Then we send our IP and port via vWS with opcode 1.
+37
+- When that's all done, we receive opcode 4 from the vWS.
+38
+- Finally we can transmit data to endpoint:port.
+39
+"""
+40
+​
+41
+from __future__ import annotations
+42
+​
+43
+import asyncio
+44
+import logging
+45
+import select
         if encode:
             if not self.encoder:
                 self.encoder = opus.Encoder()
