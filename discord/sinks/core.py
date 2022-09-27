@@ -91,8 +91,6 @@ class Filters:
         time.sleep(self.seconds)
         if self.finished:
             return
-        self.vc.stop_recording()
-
 
 class RawData:
     """Handles raw data from Discord so that it can be decrypted and decoded to be used.
@@ -148,10 +146,15 @@ class AudioData:
         ClientException
             The AudioData is already finished writing.
         """
-        if self.finished:
-            raise SinkException("The AudioData is already finished writing.")
+        # if self.finished:
+        #     raise SinkException("The AudioData is already finished writing.")
         self.file.seek(0)
+        self.file.flush()
         self.finished = True
+
+    def changeFinished(self, value):
+        self.finished = value
+
 
     def on_format(self, encoding):
         """Called when audio data is formatted.
@@ -164,7 +167,8 @@ class AudioData:
         if not self.finished:
             raise SinkException("The AudioData is still writing.")
 
-
+import queue
+import time
 class Sink(Filters):
     """A sink "stores" recorded audio data.
 
@@ -200,25 +204,35 @@ class Sink(Filters):
         Filters.__init__(self, **self.filters)
         self.vc: VoiceChannel = None
         self.audio_data = {}
-
+        self.seg = queue.Queue() #segment is the combination of chunks into one file to be transribed
+ 
     def init(self, vc):  # called under listen
         self.vc: VoiceChannel = vc
+        self.raw = io.BytesIO() # raw audio byte stream
+        self.chunk = io.BytesIO() # readable raw stream
         super().init()
 
     @Filters.container
     def write(self, data, user):
         if user not in self.audio_data:
-            file = io.BytesIO()
-            self.audio_data.update({user: AudioData(file)})
+            self.file = io.BytesIO()
+            self.audio_data.update({user: AudioData(self.file)})
 
-        file = self.audio_data[user]
-        file.write(data)
+        self.raw = io.BytesIO(data)
+        self.proc_audiochunk()
+        self.seg.put(self.chunk)
+
+    def proc_audiochunk(self):
+        chunkbyte = self.raw.getvalue()
+        self.raw.seek(0)
+        self.raw.truncate()
+        self.chunk.write(chunkbyte)
 
     def cleanup(self):
-        self.finished = True
         for file in self.audio_data.values():
             file.cleanup()
             self.format_audio(file)
+        self.file.flush()
 
     def get_all_audio(self):
         """Gets all audio files."""
