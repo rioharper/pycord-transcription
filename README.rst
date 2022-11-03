@@ -18,6 +18,7 @@ Pycord
    :alt: Latest release
 
 A fork of discord.py to transcribe audio for the tutorial found on my medium. Pycord is a modern, easy to use, feature-rich, and async ready API wrapper for Discord written in Python.
+https://rioharper.medium.com/create-your-own-diy-ai-chatbot-on-discord-519ac9f6b5b7
 
 Key Features
 ------------
